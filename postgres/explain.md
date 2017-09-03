@@ -1,10 +1,5 @@
-# Plan
-
-## pgadmin4
-
-## recherche full text sous postgresq
-
 ## Comprendre EXPLAIN
+source: [Comprendre EXPLAIN](http://www.dalibo.org/_media/comprendre_explain.pdf)
 
 Creation de deux tables parent et enfant et alimentation
 
