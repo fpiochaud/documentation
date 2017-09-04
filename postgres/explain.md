@@ -26,9 +26,9 @@ insert into enfant select i1, md5(random()::text), floor(random()*(1-500000)+500
 analyse enfant;
 explain select * from enfant;
 
-                           QUERY PLAN                            
------------------------------------------------------------------
- Seq Scan on enfant  (cost=0.00..41122.40 rows=2243040 width=40)
+                          QUERY PLAN                          
+--------------------------------------------------------------
+ Seq Scan on enfant  (cost=0.00..10280.60 rows=560760 width=40)
 (1 row)
 
 explain select * from parent
