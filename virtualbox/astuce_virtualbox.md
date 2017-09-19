@@ -34,6 +34,11 @@ Monter la partition en read only
 ```bash
 mount -n -o remount,ro -t ext4 /dev/sda1 /
 ```
+Monter la partition en read/write
+```bash
+sudo mount -o remount,rw /partition/identifier /mount/point
+```
+
 
 Lancer zerofree
 ```bash
