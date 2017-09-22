@@ -15,7 +15,7 @@ sudo cp ~/.fonts/*.* /usr/share/fonts
 #Intallation de powerline-shell
 cd /opt
 sudo -E git clone https://github.com/milkbikis/powerline-shell.git
-sudo chown -R axi:users /opt/powerline-shell
+sudo chown -R $USER:$USER /opt/powerline-shell
 sudo chmod -R 775 /opt/powerline-shell
 cd /opt/powerline-shell/
 cp config.py.dist config.py
