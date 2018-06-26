@@ -34,11 +34,6 @@ Monter la partition en read only
 ```bash
 mount -n -o remount,ro -t ext4 /dev/sda1 /
 ```
-Monter la partition en read/write
-```bash
-sudo mount -o remount,rw /partition/identifier /mount/point
-```
-
 
 Lancer zerofree
 ```bash
@@ -104,3 +99,18 @@ Et monter les disques
 ```bash
 sudo mount -a
 ```
+
+# Installer les virtualbox guest addition sur centos
+## pré-requis
+```bash
+yum install -y gcc kernel-devel kernel-headers dkms make bzip2 perl
+echo 'export KERN_DIR=/usr/src/kernels/`uname -r`' > /etc/profile.d/vbox_var.sh
+reboot
+```
+## installation des guest addition
+Cliquer sur Install Guest Additions… depuis le menu périphériques
+```bash
+mount /media/cdrom
+sh /media/cdrom/VBoxLinuxAdditions.run
+```
+
