@@ -56,6 +56,7 @@ Sur la machine hôte
 # Dans l'exemple, on passe le disque à 20Go
 <chemin de virtualbox>\vboxmanage.exe modifyhd mon_fichier_origine.vdi --resize 20480
 ```
+On peux utiliser un outil graphique (gparted par ex) pour activer l'espace ajouter.
 
 # Déplacer le home directory sur un autre disque
 source: https://help.ubuntu.com/community/Partitioning/Home/Moving
