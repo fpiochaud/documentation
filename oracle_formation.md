@@ -46,6 +46,61 @@ select * from v$parameter where name like '%pga%';
 show parameter session;
 
 show parameter dispatchers;
+--
+show parameter block;
+
+create tablespace franck_ts datafile '/u01/app/oracle/oradata/orcl/franck_ts01.dbf' size 5M;
+drop tablespace franck_off_ts including contents and datafiles;
+
+select * from dba_tablespaces where tablespace_name like 'FRANCK_%TS';
+select * from dba_data_files where tablespace_name like 'FRANCK_%TS';
+select * from v$tablespace;
+
+alter tablespace franck_ts coalesce; --defrag tbs
+create temporary tablespace franck_tmp tempfile '/u01/app/oracle/oradata/orcl/franck_tmp.dbf' size 10M;
+create undo tablespace franck_undo datafile '/u01/app/oracle/oradata/orcl/franck_undo.dbf' size 10M;
+
+create user franck identified by franck;
+grant connect to franck;
+GRANT CREATE SESSION TO "FRANCK" ;
+alter user franck default tablespace franck_ts temporary tablespace franck_tmp;
+
+select * from database_properties;
+
+alter database set time_zone = '';
+ALTER DATABASE SET TIME_ZONE = 'Pacific/Noumea';
+
+select * from dba_tab_columns where data_type like '%LOCAL%';
+
+alter system set recyclebin=OFF scope=spfile;
+select * from recyclebin;
+select SYSTIMESTAMP from dual;
+grant dba to franck;
+
+```
+
+```sql
+--permanent
+--externe
+--temporaire
+--OIT organistaion des blocks
+create table T1 (
+col1 number,
+col2 varchar2(250),
+col3 date);
+
+insert into t1 values (1,'bbb',sysdate);
+commit;
+
+select col1, rowid , DBMS_ROWID.ROWID_OBJECT(rowid) from t1;
+    
+
+
+select col1, rowid , 
+DBMS_ROWID.ROWID_RELATIVE_FNO(rowid) 
+from t1;
+
+desc v1;
 
 ```
 ## Process oracle
