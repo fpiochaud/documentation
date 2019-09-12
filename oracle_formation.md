@@ -262,3 +262,103 @@ where to_char(quantite) = '2000';
 ## 20190911
 OLTP
 OLAP
+
+## 20190912
+fichier d'adminmatin
+```bash
+#!/bin/bash
+ORACLE_UNQNAME=orcl
+ORACLE_SID=orcl
+ORACLE_BASE=/u01/app/oracle
+ORACLE_HOME=/u01/app/oracle/product/11.2.0/dbhome_1
+
+cat $ORACLE_BASE/diag/rdbms/orcl/orcl/trace/alert_orcl.log |grep 'ERROR\|ORA-' > /home/oracle/$(date +%Y%m%d%H%M%S)-admmatin.log
+
+sqlplus /nolog <<EOF
+connect / as sysdba
+set linesize 200
+spool /home/oracle/invalid_object_list.lis
+ttitle 'Liste de objets invalides'
+col owner format A10
+col object_name format A20
+col objet_type format A10
+select owner,object_name,object_type from dba_objects where status='INVALID';
+spool off
+EOF
+```
+
+### Install oracle 12c
+desinstall oracle
+cd /u01/app/oracle/
+rm -rf admin cfgtoollogs checkpoints diag flash_recovery_area oradata oradiag_oracle
+rm -rf oraInventory/
+cd /etc
+rm oraInst.loc oratab
+cd /usr/local/bin
+rm -rf coraenv dbhome oraenv
+```sql
+-- ora12c
+create user franck IDENTIFIED by franck;
+
+grant dba to franck;
+
+select * from dba_users
+where username like 'FRANCK%';
+
+alter DATABASE backup controlfile to trace;
+
+
+archive log list;
+
+show PARAMETERS reco;
+alter system set db_recovery_file_dest_size=20G scope=both;
+
+show parameter max_string_size;
+
+startup mount
+alter database archivelog;
+archive log list;
+
+select * from v$log;
+alter system SWITCH logfile;
+select * from v$log;
+
+--connected to target database: ORA12C (DBID=396582979)
+--
+RMAN> show all;
+
+using target database control file instead of recovery catalog
+RMAN configuration parameters for database with db_unique_name ORA12C are:
+CONFIGURE RETENTION POLICY TO REDUNDANCY 1; # default
+CONFIGURE BACKUP OPTIMIZATION OFF; # default
+CONFIGURE DEFAULT DEVICE TYPE TO DISK; # default
+CONFIGURE CONTROLFILE AUTOBACKUP ON; # default
+CONFIGURE CONTROLFILE AUTOBACKUP FORMAT FOR DEVICE TYPE DISK TO '%F'; # default
+CONFIGURE DEVICE TYPE DISK PARALLELISM 1 BACKUP TYPE TO BACKUPSET; # default
+CONFIGURE DATAFILE BACKUP COPIES FOR DEVICE TYPE DISK TO 1; # default
+CONFIGURE ARCHIVELOG BACKUP COPIES FOR DEVICE TYPE DISK TO 1; # default
+CONFIGURE MAXSETSIZE TO UNLIMITED; # default
+CONFIGURE ENCRYPTION FOR DATABASE OFF; # default
+CONFIGURE ENCRYPTION ALGORITHM 'AES128'; # default
+CONFIGURE COMPRESSION ALGORITHM 'BASIC' AS OF RELEASE 'DEFAULT' OPTIMIZE FOR LOAD TRUE ; # default
+CONFIGURE RMAN OUTPUT TO KEEP FOR 7 DAYS; # default
+CONFIGURE ARCHIVELOG DELETION POLICY TO NONE; # default
+CONFIGURE SNAPSHOT CONTROLFILE NAME TO '/u01/app/oracle/product/12.0.1/dbhome_1/dbs/snapcf_ora12c.f'; # default
+
+CONFIGURE ARCHIVELOG DELETION POLICY TO BACKED UP 2 TIMES TO DISC;
+
+backup database;
+backup archivelog all;
+backup database plus archivelog;
+
+
+-- check du matin
+rman
+list backup;
+sequentialité des arc
+taille des logs
+
+
+rman target sys/oracle < /home/oracle/rman.txt
+
+```
