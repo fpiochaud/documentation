@@ -346,6 +346,7 @@ CONFIGURE ARCHIVELOG DELETION POLICY TO NONE; # default
 CONFIGURE SNAPSHOT CONTROLFILE NAME TO '/u01/app/oracle/product/12.0.1/dbhome_1/dbs/snapcf_ora12c.f'; # default
 
 CONFIGURE ARCHIVELOG DELETION POLICY TO BACKED UP 2 TIMES TO DISC;
+CONFIGURE ARCHIVELOG DELETION POLICY TO APPLIED ON ALL STANDBY BACKED UP 1 TIMES TO DISK;
 
 backup database;
 backup archivelog all;
@@ -361,4 +362,217 @@ taille des logs
 
 rman target sys/oracle < /home/oracle/rman.txt
 
+```
+## 20190913
+vim /home/oracle/expdb.param
+```
+DIRECTORY=DIRFRANCK
+DUMPFILE=expfull.dmp
+LOGFILE=expdp.log
+FULL=Y
+
+--autre version
+DIRECTORY=DIRFRANCK
+DUMPFILE=expfull.dmp
+LOGFILE=expdp.log
+SCHEMAS=FRANCK
+REUSE_DUMPFILES=YES
+```
+
+```bash
+expdp franck/franck parfile=/home/oracle/expdb.param
+```
+```bash
+#!/bin/bash
+export ORACLE_UNQNAM=ora12c
+export ORACLE_SID=ora12c
+export ORACLE_BASE=/u01/app/oracle
+export ORACLE_HOME=/u01/app/oracle/product/12.0.1/dbhome_1
+PATH=/usr/lib64/qt-3.3/bin:/usr/local/bin:/bin:/usr/bin:/usr/local/sbin:/usr/sbin:/home/oracle/.local/bin:/home/oracle/bin:/u01/app/oracle/product/12.0.1/dbhome_1/bin
+
+date_jour=`date +%Y%m%d%H%M%S`
+echo "DEBUT EXPDB" > "/home/oracle/$date_jour-my_expdp.log"
+echo "================================================================" >> "/home/oracle/$date_jour-admmatin.log"
+
+expdp franck/franck parfile=/home/oracle/expdp.param
+
+echo "FIN EXPDB" >> "/home/oracle/$date_jour-my_expdp.log"
+echo "================================================================" >> "/home/oracle/$date_jour-admmatin.log"
+```
+vim impdp.param
+```
+DIRECTORY=DIRFRANCK
+DUMPFILE=expfull.dmp
+LOGFILE=impdpmetier.log
+TABLES=T1
+```
+impdp franck/franck parfile=/home/oracle/impdpmetier.param
+
+transportable_tablespace
+au lieu de faire
+arret production
+expdp full serveur A
+impdp ful serveur B
+reprise production
+
+on va faire
+arret production
+expdp metadonné serveur A
+base arreter cp de tous les dbff
+deplace les sur serveur B
+impdb metadone serveur B
+startup serveur B
+
+FlashBACk
+flachback scn ou flashback_time (avant l'heure de la sauvegarde expdp)
+
+PARALLEL= integer
+
+REMAP_SCHEMA=FRANCK:FRANCK2 permettre à impdp de restature un bojet apartenet à P1 et P2
+REMAP_TABLE=T1:T2  permettre à impdp de restature un objet apartenant à P1 et P2
+
+==== crash
+Analyse: alerte_sid.log
+fichier dbf
+fichier de log
+fichier ctl
+fichier spfile
+fichier des mots de passe
+base arrêteé
+données corrompues
+
+1) fichier df
+sql>shutdown immediate
+sql>shutdown abort
+sql>shartup nomount
+sql>shutdown immediate
+sql>shartup mount
+
+rman>restore database;
+ou 
+rman>restore tbs users;
+ou
+rman>restore datafile 7;
+
+rman>recover database;
+sql> alter database open;
+
+PITR: repere temps / SCN / restore point
+Point de controle: 
+11:28=count(*) 5
+11:29=count(*) 7
+12:54=count(*) 11
+
+le metier appelle demande resto à 11:28
+sql>shutdown immediate
+! rm users01.dbf
+sql>startup mount
+
+rman>run
+{
+set until time "to_date('13/09/19 11:29:13','DD/MM/YY HH24:MI:SS')";
+restore database;
+recover database;
+}
+
+sql> alter database open resetlogs;
+
+rman> backup database plus archivelog;
+
+test final le résultat est count(*) 7
+
+TP5: restaurer sur un autre disque
+rman>run
+{
+set newname for datafile '/u01/app/oracle/oradata/ora12c/users01.dbf' to '/u01/app/oracle/oradatabis/ora12c/users01.dbf';
+restore database;
+switch datafile all;
+recover database;
+}
+sql> alter database open;
+
+comment restaure pfile
+sql> startup nomount
+rman>restore spfile from autobackup;
+
+comment restaure fichier pwd
+recrer le fichier
+
+comment restaure fichier de log
+
+TP6 le metier demande une restaauration avant la création dela facture 
+
+flashback
+1) flashback table to before drop;
+metier (connect franck/franck)
+drop table --> oups
+
+dba
+select * from dba_recyclebin;
+flashback table franck.t1 to before drop;
+
+2) undo
+le tbs undo conserve pendant 900 secondes les transactions de chaque utilisateurs
+
+select systimestamp from dual;
+insert into franck.T1 values (12345, test flash', sysdate);
+select systimestamp from dual;
+
+
+3) FDA (Flashback data archive)
+
+4) restauration de la base dans le délai de rétention déclaré
+pre requis: base possede les propriete flasback database
+sql>alter system set db_flashback_retention_target=3600 scope=spfile;
+sql>shutdown immediate
+sql>startup mount
+sql>alter database flashback on;
+sql>alter database open;
+
+create restore point avantinter;
+
+sql>shutdown immediate
+startup mount
+
+
+```
+select * from dba_objects
+where object_name like 'SYS_AUT%';
+
+select * from dba_jobs;
+
+select * from DBA_SCHEDULER_WINDOWS;
+
+create or replace directory DIRFRANCK as '/home/oracle/bkp';
+
+select * from franck.t1;
+
+select name, space_limit/(1024*1024) "tot", round(space_used/(1024*1024)) "used", round(space_reclaimable/(1024*1024)"rec", number_of_files files from v$recovery_file_dest;
+select * from v$recovery_file_dest;
+
+select SYSTIMESTAMP from dual;
+
+select * from dba_recyclebin;
+flashback table franck.t1 to before drop;
+
+show parameter retention;
+
+select systimestamp from dual;
+insert into franck.T1 values (12345, 'test flash', sysdate);
+commit;
+select systimestamp from dual;
+delete franck.t1 where col1=12345;
+commit;
+select systimestamp from dual;
+
+SELECT versions_startscn,versions_endscn, versions_operation,col1 
+FROM   franck.T1
+VERSIONS BETWEEN TIMESTAMP TO_TIMESTAMP('2019-09-13 15:20:08', 'YYYY-MM-DD HH24:MI:SS')
+ AND TO_TIMESTAMP('2019-09-13 15:29:00', 'YYYY-MM-DD HH24:MI:SS') 
+where col1=12345;
+
+
+select * from database_properties
+;
+select * from v$database;
 ```
