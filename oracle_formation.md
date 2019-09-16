@@ -576,3 +576,253 @@ select * from database_properties
 ;
 select * from v$database;
 ```
+
+## 20190916
+```sql
+select * from v$recovery_file_dest;
+
+select * from dba_scheduler_job_log
+where status='FAILED';
+select * from dba_SCHEDULER_JOB_RUN_DETAILS;
+/*
+6960	16/09/19 00:00:26,542151000 +11:00	SYS	ORA$AT_OS_OPT_SY_575		ORA$AT_JCNRM_OS	RUN	FAILED								
+6984	16/09/19 00:10:29,655930000 +11:00	SYS	ORA$AT_OS_OPT_SY_577		ORA$AT_JCNRM_OS	RUN	FAILED								
+7008	16/09/19 00:20:29,609957000 +11:00	SYS	ORA$AT_OS_OPT_SY_579		ORA$AT_JCNRM_OS	RUN	FAILED								
+7038	16/09/19 00:30:31,033074000 +11:00	SYS	ORA$AT_OS_OPT_SY_581		ORA$AT_JCNRM_OS	RUN	FAILED								
+7062	16/09/19 00:40:35,652059000 +11:00	SYS	ORA$AT_OS_OPT_SY_583		ORA$AT_JCNRM_OS	RUN	FAILED								
+7086	16/09/19 00:50:33,906399000 +11:00	SYS	ORA$AT_OS_OPT_SY_585		ORA$AT_JCNRM_OS	RUN	FAILED								
+7110	16/09/19 01:00:36,455188000 +11:00	SYS	ORA$AT_OS_OPT_SY_587		ORA$AT_JCNRM_OS	RUN	FAILED								
+7138	16/09/19 01:10:38,384502000 +11:00	SYS	ORA$AT_OS_OPT_SY_589		ORA$AT_JCNRM_OS	RUN	FAILED								
+7162	16/09/19 01:20:39,076684000 +11:00	SYS	ORA$AT_OS_OPT_SY_591		ORA$AT_JCNRM_OS	RUN	FAILED								
+7198	16/09/19 01:30:40,213375000 +11:00	SYS	ORA$AT_OS_OPT_SY_593		ORA$AT_JCNRM_OS	RUN	FAILED								
+7222	16/09/19 01:40:41,536016000 +11:00	SYS	ORA$AT_OS_OPT_SY_595		ORA$AT_JCNRM_OS	RUN	FAILED								
+*/
+
+exec dbms_stats.gather_database_stats();
+
+create pfile='/home/oracle/pfile20190916.ora' from spfile;
+
+alter DATABASE backup controlfile to trace;
+--version A: desactiver le lancement
+begin
+dbms_auto_task_admin.disable(
+client_name=>'auto optimizer stats collection',
+operation=>NULL,
+window_name=>NULL);
+end;
+/
+
+show parameter tunin;
+show parameter pack; --control_management_pack_access string DIAGNOSTIC+TUNING --- sous licence
+
+
+create FLASHBACK ARCHIVE DEFAULT fda_1year TABLESPACE TS_FBDA QUOTA 10G RETENTION 1 YEAR;
+
+grant FLASHBACK ARCHIVE on fda_1year to franck;
+
+select * from dba_flashback_archive;
+select * from dba_flashback_archive_ts;
+select * from dba_flashback_archive_tables;
+
+select  idarticle, 
+        versions_startscn, 
+        versions_endscn,
+        versions_operation
+from franck.test_fda
+versions between scn minvalue and maxvalue
+order by versions_startscn;
+
+
+select * from dba_extents
+where owner = 'FRANCK'
+and segment_name = 'TEST_FDA';
+
+create restore point avant_delete;
+
+select * from v$restore_point;
+
+--pour le supprimer
+drop restore point avant_delete;
+
+
+-----
+sql> shutdown immediate;
+sql> startup mount;
+rman> restaure database;
+rman> recover database;
+sql> alter database open;
+
+select sql_fulltext ,command_type,fetches,parsing_schema_name ,parsing_user_id    from sys.v_$sqlarea;
+
+
+select * from dba_jobs;
+select * from dba_jobs_running;
+
+select owner, job_name, run_count, last_start_date, next_run_date from dba_scheduler_jobs
+where owner = 'FRANCK';
+
+select systimestamp from dual;
+
+
+BEGIN
+    DBMS_SCHEDULER.CREATE_JOB (
+            job_name => '"FRANCK"."JOBTESTFDA"',
+            job_type => 'STORED_PROCEDURE',
+            job_action => 'FRANCK.PROC_POPULATE',
+            number_of_arguments => 1,
+            start_date => NULL,
+            repeat_interval => 'FREQ=DAILY',
+            end_date => NULL,
+            enabled => FALSE,
+            auto_drop => FALSE,
+            comments => '');
+
+    DBMS_SCHEDULER.SET_JOB_ARGUMENT_VALUE( 
+             job_name => '"FRANCK"."JOBTESTFDA"', 
+             argument_position => 1, 
+             argument_value => '100000');
+         
+     
+ 
+    DBMS_SCHEDULER.SET_ATTRIBUTE( 
+             name => '"FRANCK"."JOBTESTFDA"', 
+             attribute => 'store_output', value => TRUE);
+    DBMS_SCHEDULER.SET_ATTRIBUTE( 
+             name => '"FRANCK"."JOBTESTFDA"', 
+             attribute => 'logging_level', value => DBMS_SCHEDULER.LOGGING_OFF);
+      
+   
+  
+    
+    DBMS_SCHEDULER.enable(
+             name => '"FRANCK"."JOBTESTFDA"');
+END;
+
+```
+--franck
+```sql
+create tablespace ts_FBDA datafile '/u01/app/oracle/oradata/ora12c/fda_01.dbf' size 1M autoextend on next 1M;
+
+--as sysdba
+create FLASHBACK ARCHIVE DEFAULT fda_1year TABLESPACE TS_FBDA QUOTA 10G RETENTION 1 YEAR;
+
+create table test_fda (idarticle number,
+quantite number,
+prix number)
+FLASHBACK ARCHIVE;
+
+create sequence seqT1;
+create or replace procedure proc_populate(nblig number) as 
+begin
+    declare
+        n_commit number :=0 ;
+    begin
+        for i in 1..nblig 
+        loop
+            insert into test_fda values (seqt1.nextval, round(dbms_random.value(1,10000000)) , round(dbms_random.value(1,1000000)));
+            n_commit:=n_commit+1;
+            if n_commit >= 10000 then
+                commit;
+                n_commit := 0;
+            end if;
+        end loop;
+        commit;
+    end;
+end;
+/
+
+exec proc_populate(100000);
+
+select  idarticle, 
+        versions_startscn, 
+        versions_endscn,
+        versions_operation
+from franck.test_fda
+versions between scn minvalue and maxvalue
+order by versions_startscn;
+
+delete from test_fda where idarticle = 1;
+commit;
+
+select  *
+from franck.test_fda 
+as of SCN 2142695;
+
+insert into test_fda values (1,1155933,90540);
+commit;
+
+select  idarticle, 
+        versions_startscn, 
+        versions_endscn,
+        versions_operation
+from franck.test_fda
+versions between scn minvalue and maxvalue
+where idarticle=1
+order by versions_startscn;
+
+SELECT versions_startscn,versions_endscn, versions_operation,col1 
+FROM   franck.T1
+versions between scn minvalue and maxvalue  
+;
+
+---franck
+BEGIN
+    DBMS_SCHEDULER.DROP_JOB (
+            job_name => '"FRANCK"."JOBFRANCK"');
+END;
+/
+
+BEGIN
+dbms_credential.create_credential(
+credential_name=>'franckcred',
+username=>'oracle',
+password=>'oracle');
+END;
+/
+BEGIN
+    DBMS_SCHEDULER.CREATE_JOB (
+            job_name => '"FRANCK"."JOBFRANCK"',
+            job_type => 'EXECUTABLE',
+            job_action => '/home/oracle/testjob.sh',
+            auto_drop =>false,
+            enabled => FALSE
+            credential_name=>'franckcred');
+END;
+/
+
+exec DBMS_SCHEDULER.enable(name=>'JOBFRANCK');
+exec DBMS_SCHEDULER.RUN_JOB(job_name => 'JOBFRANCK');
+
+BEGIN
+    DBMS_SCHEDULER.set_attribute( name => '"FRANCK"."JOBFRANCK"', attribute => 'repeat_interval', value => 'FREQ=HOURLY');
+        DBMS_SCHEDULER.set_attribute( name => '"FRANCK"."JOBFRANCK"', attribute => 'start_date', value => TO_TIMESTAMP_TZ('2019-09-16 13:52:00.000000000 PACIFIC/GUADALCANAL','YYYY-MM-DD HH24:MI:SS.FF TZR'));
+        DBMS_SCHEDULER.set_attribute( name => '"FRANCK"."JOBFRANCK"', attribute => 'end_date', value => TO_TIMESTAMP_TZ('2019-09-16 15:52:00.000000000 PACIFIC/GUADALCANAL','YYYY-MM-DD HH24:MI:SS.FF TZR'));
+
+END; 
+/
+
+create table franck.t3ext (col1 varchar2(50), col2 number) organization external
+(
+type oracle_loader
+default directory DIRFRANCK
+access parameters (
+records delimited by newline
+fields terminated by ','
+)
+location ('donneeExt.txt')
+)
+reject limit unlimited;
+
+select * from t3ext;
+
+
+
+```
+le sequenceur/scheduler ?
+
+
+sql loader
+controlfile: loader.ctl
+
+
+
