@@ -1,5 +1,7 @@
 # Formation oracle
+
 ## code sql vue en formation
+
 ```sql
 select 'controlfile',name from v$controlfile
 union
@@ -164,10 +166,10 @@ exec proc1 ;
 select count(1) from t1;
 
 create or replace function func1 return date as
- 	maxdate franck.t1.col3%type;
+    maxdate franck.t1.col3%type;
 begin
-   	select max(col3) into maxdate from franck.T1;
-    	return (maxdate) ;
+    select max(col3) into maxdate from franck.T1;
+    return (maxdate) ;
 end;
 /
 -- pour utiliser une fonction
@@ -259,12 +261,16 @@ where to_char(quantite) = '2000';
 
 
 ```
+
 ## 20190911
+
 OLTP
 OLAP
 
 ## 20190912
+
 fichier d'adminmatin
+
 ```bash
 #!/bin/bash
 ORACLE_UNQNAME=orcl
@@ -288,6 +294,7 @@ EOF
 ```
 
 ### Install oracle 12c
+
 desinstall oracle
 cd /u01/app/oracle/
 rm -rf admin cfgtoollogs checkpoints diag flash_recovery_area oradata oradiag_oracle
@@ -296,6 +303,7 @@ cd /etc
 rm oraInst.loc oratab
 cd /usr/local/bin
 rm -rf coraenv dbhome oraenv
+
 ```sql
 -- ora12c
 create user franck IDENTIFIED by franck;
@@ -363,9 +371,12 @@ taille des logs
 rman target sys/oracle < /home/oracle/rman.txt
 
 ```
+
 ## 20190913
+
 vim /home/oracle/expdb.param
-```
+
+```bash
 DIRECTORY=DIRFRANCK
 DUMPFILE=expfull.dmp
 LOGFILE=expdp.log
@@ -382,6 +393,7 @@ REUSE_DUMPFILES=YES
 ```bash
 expdp franck/franck parfile=/home/oracle/expdb.param
 ```
+
 ```bash
 #!/bin/bash
 export ORACLE_UNQNAM=ora12c
@@ -399,13 +411,16 @@ expdp franck/franck parfile=/home/oracle/expdp.param
 echo "FIN EXPDB" >> "/home/oracle/$date_jour-my_expdp.log"
 echo "================================================================" >> "/home/oracle/$date_jour-admmatin.log"
 ```
+
 vim impdp.param
-```
+
+```bash
 DIRECTORY=DIRFRANCK
 DUMPFILE=expfull.dmp
 LOGFILE=impdpmetier.log
 TABLES=T1
 ```
+
 impdp franck/franck parfile=/home/oracle/impdpmetier.param
 
 transportable_tablespace
@@ -449,7 +464,7 @@ sql>shutdown immediate
 sql>shartup mount
 
 rman>restore database;
-ou 
+ou
 rman>restore tbs users;
 ou
 rman>restore datafile 7;
@@ -458,7 +473,7 @@ rman>recover database;
 sql> alter database open;
 
 PITR: repere temps / SCN / restore point
-Point de controle: 
+Point de controle:
 11:28=count(*) 5
 11:29=count(*) 7
 12:54=count(*) 11
@@ -500,42 +515,37 @@ recrer le fichier
 
 comment restaure fichier de log
 
-TP6 le metier demande une restaauration avant la création dela facture 
+TP6 le metier demande une restaauration avant la création dela facture
 
 flashback
-1) flashback table to before drop;
-metier (connect franck/franck)
-drop table --> oups
 
-dba
-select * from dba_recyclebin;
-flashback table franck.t1 to before drop;
+1) flashback table to before drop \
+metier (connect franck/franck) \
+drop table --> oups \
+dba \
+select * from dba_recyclebin; \
+flashback table franck.t1 to before drop; \
 
-2) undo
-le tbs undo conserve pendant 900 secondes les transactions de chaque utilisateurs
-
-select systimestamp from dual;
-insert into franck.T1 values (12345, test flash', sysdate);
-select systimestamp from dual;
-
+2) undo \
+le tbs undo conserve pendant 900 secondes les transactions de chaque utilisateurs \
+select systimestamp from dual; \
+insert into franck.T1 values (12345, test flash', sysdate); \
+select systimestamp from dual; \
 
 3) FDA (Flashback data archive)
 
-4) restauration de la base dans le délai de rétention déclaré
-pre requis: base possede les propriete flasback database
-sql>alter system set db_flashback_retention_target=3600 scope=spfile;
-sql>shutdown immediate
-sql>startup mount
-sql>alter database flashback on;
-sql>alter database open;
+4) restauration de la base dans le délai de rétention déclaré \
+pre requis: base possede les propriete flasback database \
+sql>alter system set db_flashback_retention_target=3600 scope=spfile; \
+sql>shutdown immediate \
+sql>startup mount \
+sql>alter database flashback on; \
+sql>alter database open; \
+create restore point avantinter; \
+sql>shutdown immediate \
+startup mount \
 
-create restore point avantinter;
-
-sql>shutdown immediate
-startup mount
-
-
-```
+```bash
 select * from dba_objects
 where object_name like 'SYS_AUT%';
 
@@ -578,6 +588,7 @@ select * from v$database;
 ```
 
 ## 20190916
+
 ```sql
 select * from v$recovery_file_dest;
 
@@ -585,17 +596,17 @@ select * from dba_scheduler_job_log
 where status='FAILED';
 select * from dba_SCHEDULER_JOB_RUN_DETAILS;
 /*
-6960	16/09/19 00:00:26,542151000 +11:00	SYS	ORA$AT_OS_OPT_SY_575		ORA$AT_JCNRM_OS	RUN	FAILED								
-6984	16/09/19 00:10:29,655930000 +11:00	SYS	ORA$AT_OS_OPT_SY_577		ORA$AT_JCNRM_OS	RUN	FAILED								
-7008	16/09/19 00:20:29,609957000 +11:00	SYS	ORA$AT_OS_OPT_SY_579		ORA$AT_JCNRM_OS	RUN	FAILED								
-7038	16/09/19 00:30:31,033074000 +11:00	SYS	ORA$AT_OS_OPT_SY_581		ORA$AT_JCNRM_OS	RUN	FAILED								
-7062	16/09/19 00:40:35,652059000 +11:00	SYS	ORA$AT_OS_OPT_SY_583		ORA$AT_JCNRM_OS	RUN	FAILED								
-7086	16/09/19 00:50:33,906399000 +11:00	SYS	ORA$AT_OS_OPT_SY_585		ORA$AT_JCNRM_OS	RUN	FAILED								
-7110	16/09/19 01:00:36,455188000 +11:00	SYS	ORA$AT_OS_OPT_SY_587		ORA$AT_JCNRM_OS	RUN	FAILED								
-7138	16/09/19 01:10:38,384502000 +11:00	SYS	ORA$AT_OS_OPT_SY_589		ORA$AT_JCNRM_OS	RUN	FAILED								
-7162	16/09/19 01:20:39,076684000 +11:00	SYS	ORA$AT_OS_OPT_SY_591		ORA$AT_JCNRM_OS	RUN	FAILED								
-7198	16/09/19 01:30:40,213375000 +11:00	SYS	ORA$AT_OS_OPT_SY_593		ORA$AT_JCNRM_OS	RUN	FAILED								
-7222	16/09/19 01:40:41,536016000 +11:00	SYS	ORA$AT_OS_OPT_SY_595		ORA$AT_JCNRM_OS	RUN	FAILED								
+6960 16/09/19 00:00:26,542151000 +11:00 SYS ORA$AT_OS_OPT_SY_575  ORA$AT_JCNRM_OS RUN FAILED        
+6984 16/09/19 00:10:29,655930000 +11:00 SYS ORA$AT_OS_OPT_SY_577  ORA$AT_JCNRM_OS RUN FAILED        
+7008 16/09/19 00:20:29,609957000 +11:00 SYS ORA$AT_OS_OPT_SY_579  ORA$AT_JCNRM_OS RUN FAILED        
+7038 16/09/19 00:30:31,033074000 +11:00 SYS ORA$AT_OS_OPT_SY_581  ORA$AT_JCNRM_OS RUN FAILED        
+7062 16/09/19 00:40:35,652059000 +11:00 SYS ORA$AT_OS_OPT_SY_583  ORA$AT_JCNRM_OS RUN FAILED        
+7086 16/09/19 00:50:33,906399000 +11:00 SYS ORA$AT_OS_OPT_SY_585  ORA$AT_JCNRM_OS RUN FAILED        
+7110 16/09/19 01:00:36,455188000 +11:00 SYS ORA$AT_OS_OPT_SY_587  ORA$AT_JCNRM_OS RUN FAILED        
+7138 16/09/19 01:10:38,384502000 +11:00 SYS ORA$AT_OS_OPT_SY_589  ORA$AT_JCNRM_OS RUN FAILED        
+7162 16/09/19 01:20:39,076684000 +11:00 SYS ORA$AT_OS_OPT_SY_591  ORA$AT_JCNRM_OS RUN FAILED        
+7198 16/09/19 01:30:40,213375000 +11:00 SYS ORA$AT_OS_OPT_SY_593  ORA$AT_JCNRM_OS RUN FAILED        
+7222 16/09/19 01:40:41,536016000 +11:00 SYS ORA$AT_OS_OPT_SY_595  ORA$AT_JCNRM_OS RUN FAILED        
 */
 
 exec dbms_stats.gather_database_stats();
@@ -699,7 +710,9 @@ BEGIN
 END;
 
 ```
+
 --franck
+
 ```sql
 create tablespace ts_FBDA datafile '/u01/app/oracle/oradata/ora12c/fda_01.dbf' size 1M autoextend on next 1M;
 
@@ -818,11 +831,8 @@ select * from t3ext;
 
 
 ```
-le sequenceur/scheduler ?
 
+le sequenceur/scheduler ?
 
 sql loader
 controlfile: loader.ctl
-
-
-

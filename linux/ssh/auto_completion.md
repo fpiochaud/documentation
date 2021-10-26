@@ -1,15 +1,20 @@
-# Bash
-## Ajouter de l'autocompletion à la commande ssh
-source: https://unix.stackexchange.com/questions/136351/autocomplete-server-names-for-ssh-and-scp
+# Auto-completion
+
+## Bash
+
+### Ajouter de l'autocompletion à la commande ssh
+
+source: <https://unix.stackexchange.com/questions/136351/autocomplete-server-names-for-ssh-and-scp>
 
 Au fur et à mesure qu'on se connecte à de nouveau serveur, l'autocompletion s'enrichit
 
 Il faut modifier ~/.ssh/config et /etc/ssh/ssh_config
-en ajoutant: 
+en ajoutant:
 
 ```bash
 HashKnownHosts no
 ```
+
 Ceci permet de ne plus 'hasher' les hosts dans le fichier known_hosts.
 
 Créer un fichier /etc/bash_completion.d/ssh avec:
@@ -28,8 +33,11 @@ _ssh()
 }
 complete -F _ssh ssh
 ```
-#Zsh
+
+## Zsh
+
 Ajouter dans ~/.zshrc
+
 ```bash
 # Highlight the current autocomplete option
 zstyle ':completion:*' list-colors "${(s.:.)LS_COLORS}"
