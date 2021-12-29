@@ -1,38 +1,63 @@
 # Comprendre EXPLAIN
 
-source: [Comprendre EXPLAIN](http://www.dalibo.org/_media/comprendre_explain.pdf) lien mort
+sources: 
+- [Comprendre EXPLAIN](https://public.dalibo.com/exports/formation/manuels/modules/j2/j2.handout.pdf) 
+- [Explain plan (doc officiel postgres)](https://docs.postgresql.fr/10/using-explain.html)
 
-Creation de deux tables parent et enfant et alimentation
+Création de la tables parent et alimentation (insertion de 1millions de lignes) 
 
 ```sql
 create table parent (
   id integer primary key, 
   parent text);
 insert into parent select i1, md5(random()::text) from generate_series(1,1000000) i1;
+```
 
+On calcule les stats de la tables (Comme elle vient d'être remplie)
+
+```sql
 analyse parent;
+```
+
+Lançons un explain plan sur un select * de la table
+
+```sql
+-- explain plan
 explain select * from parent;
 
                            QUERY PLAN                            
 -----------------------------------------------------------------
  Seq Scan on parent  (cost=0.00..18334.00 rows=1000000 width=37)
 (1 row)
+```
+- **cost**: Le premier chiffre est le coût pour récupérer la première ligne. Le deuxième chiffre est le coût pour récupérer toutes les lignes. Le coût dépends de la platforme utilisé (citation Kaamelott: L'important c'est la valeur). La pratique est de mesurer en unité de récupération de pages disque ([seq_page_cost](https://docs.postgresql.fr/10/runtime-config-query.html#GUC-SEQ-PAGE-COST))
+- **rows** : nombre de lignes estimé sur ce noeud de plan
+- **width**: taille moyenne d'une ligne estimée en octets
 
+Création d'une table enfant et alimentation de celle-ci
+
+```sql
 create table enfant (
   id integer primary key,
   enfant text,
   parent_id integer references parent (id));
 insert into enfant select i1, md5(random()::text), floor(random()*(1-500000)+500000) from generate_series(1,500000)i1;
 
+-- analyse de la table
 analyse enfant;
+
+-- explain de la table
 explain select * from enfant;
 
                           QUERY PLAN                          
 --------------------------------------------------------------
  Seq Scan on enfant  (cost=0.00..10280.60 rows=560760 width=40)
 (1 row)
+```
 
+Maintenant, on joint nos deux tables et on regarde son plan d'exécution.
 
+```sql
 explain select * from parent
 join enfant on parent.id = enfant.parent_id 
 order by parent.id;
@@ -46,7 +71,28 @@ order by parent.id;
                Sort Key: enfant.parent_id
                ->  Seq Scan on enfant  (cost=0.00..9673.00 rows=500000 width=41)
 (7 rows)
+```
+Petite analyse de l'explain précédent:
+- `Merge Join  (cost=72385.10..99423.36 rows=500000 width=82)`: coût total de la requête. \
+coût pour récupérer la première ligne 72385.10 \
+coût pour récupérer toutes les lignes 99423.36 \
+estimation du nombre de lignes ramenées: 500.000 lignes
+taille moyenne d'une ligne: 82 octets
+  - `Merge Cond: (parent.id = enfant.parent_id)`: \
+  Noeud de plan correspondant à la jointure    
+  `Index Scan using parent_pkey on parent  (cost=0.42..34317.43 rows=1000000 width=37)` \
+  Le planificateur passe par l'indexe de la clé primaire de la table parent \
+  `Materialize  (cost=72384.42..74884.42 rows=500000 width=41)`: \
+  Le planificateur matrialise la relation interne de la jointure. le parcours d'index ou sort sera fait qu'une seule fois. 
+   - `Sort  (cost=72384.42..73634.42 rows=500000 width=41)` \
+     Même principe que plus haut \
+      - `Sort Key: enfant.parent_id`\ 
+        Le sort est fait sur enfant.parent_id alors que dans la requête le sort est sur parent.id. Le planificateur est trouvé que le tri serait plus rapide par les parent_id des enfants
+        - `Seq Scan on enfant  (cost=0.00..9673.00 rows=500000 width=41)` \
+          Nous sommes sur une lecture sequentiel de la table enfant. 
 
+Rajoutant l'analyse à notre explain et observons.
+```sql
 explain analyse select * from parent
 join enfant on parent.id = enfant.parent_id 
 order by parent.id;
@@ -63,9 +109,17 @@ order by parent.id;
  Planning time: 0.179 ms
  Execution time: 924.981 ms
 (10 rows)
+```
+Pas de différence par rapport au dernier explain, à une exception faite, une information de la durée actuelle et le nombre de loop fait. On a également la durée de la planification et de l'exécution de la requête.
 
+Et si on ajoutait un index ?
+```sql
+--Ajout d'index sur la foreign key de enfant (et oui il en faut une)
 create index parent_id_idx on enfant (parent_id);
+```
+Ce n'est pas comme les antibiotique, ce n'est pas automatique. ce n'est pas parce qu'il y a une clé étrangère qu'il y a un indexe.
 
+```sql
 explain analyse select * from parent
 join enfant on parent.id = enfant.parent_id 
 order by parent.id;
@@ -78,8 +132,10 @@ order by parent.id;
  Planning time: 0.191 ms
  Execution time: 844.028 ms
 (6 rows)
+```
+Aaahh! c'est déjà mieux avec un index !
 
-
+```sql
 --changement de la requete en ajoutant une recherche like
 explain analyse select * from parent
 join enfant on parent.id = enfant.parent_id 
@@ -209,3 +265,7 @@ order by parent.id;
 (16 rows)
 
 ```
+cost premier ligne .. toutes les lignes
+l'unité de cout "de page"
+rows : nombre de lignes
+width: largeru moyenne d'une ligne (en octets)

@@ -1,13 +1,7 @@
 # explain plan PG
 
-cost premier ligne .. toutes les lignes
-l'unité de cout"de page"
-rows : nombre de lignes
-width: largeru moyenne d'une ligne (en octets)
 
-analyse nom de table
 
-<http://www.dalibo.org/_media/comprendre_explain.pdf>
 
 table pg_statistique ou pg_stats pour voir les statistiques d'une table
 
