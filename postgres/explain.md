@@ -25,7 +25,7 @@ Lançons un explain plan sur un select * de la table
 -- explain plan
 explain select * from parent;
 
-                           QUERY PLAN                            
+                              QUERY PLAN                            
 -----------------------------------------------------------------
  Seq Scan on parent  (cost=0.00..18334.00 rows=1000000 width=37)
 (1 row)
@@ -49,9 +49,9 @@ analyse enfant;
 -- explain de la table
 explain select * from enfant;
 
-                          QUERY PLAN                          
---------------------------------------------------------------
- Seq Scan on enfant  (cost=0.00..10280.60 rows=560760 width=40)
+                              QUERY PLAN                            
+-----------------------------------------------------------------
+Seq Scan on enfant  (cost=0.00..10280.60 rows=560760 width=40)
 (1 row)
 ```
 
@@ -61,8 +61,9 @@ Maintenant, on joint nos deux tables et on regarde son plan d'exécution.
 explain select * from parent
 join enfant on parent.id = enfant.parent_id 
 order by parent.id;
-                                        QUERY PLAN                                         
--------------------------------------------------------------------------------------------
+
+                              QUERY PLAN                            
+-----------------------------------------------------------------
  Merge Join  (cost=72385.10..99423.36 rows=500000 width=82)
    Merge Cond: (parent.id = enfant.parent_id)
    ->  Index Scan using parent_pkey on parent  (cost=0.42..34317.43 rows=1000000 width=37)
@@ -96,8 +97,8 @@ Rajoutant l'analyse à notre explain et observons.
 explain analyse select * from parent
 join enfant on parent.id = enfant.parent_id 
 order by parent.id;
-                                                                 QUERY PLAN                                                                 
---------------------------------------------------------------------------------------------------------------------------------------------
+                              QUERY PLAN                            
+-----------------------------------------------------------------
  Merge Join  (cost=72385.10..99423.36 rows=500000 width=82) (actual time=305.680..878.392 rows=500000 loops=1)
    Merge Cond: (parent.id = enfant.parent_id)
    ->  Index Scan using parent_pkey on parent  (cost=0.42..34317.43 rows=1000000 width=37) (actual time=0.008..107.787 rows=500000 loops=1)
@@ -117,14 +118,14 @@ Et si on ajoutait un index ?
 --Ajout d'index sur la foreign key de enfant (et oui il en faut une)
 create index parent_id_idx on enfant (parent_id);
 ```
-Ce n'est pas comme les antibiotique, ce n'est pas automatique. ce n'est pas parce qu'il y a une clé étrangère qu'il y a un indexe.
+Ce n'est pas comme les antibiotiques, ce n'est pas automatique. Ce n'est pas parce qu'il y a une clé étrangère qu'il y a un index dessus.
 
 ```sql
 explain analyse select * from parent
 join enfant on parent.id = enfant.parent_id 
 order by parent.id;
-                                                                 QUERY PLAN                                                                  
----------------------------------------------------------------------------------------------------------------------------------------------
+                              QUERY PLAN                            
+-----------------------------------------------------------------
  Merge Join  (cost=3.15..56225.74 rows=500000 width=82) (actual time=0.011..805.432 rows=500000 loops=1)
    Merge Cond: (parent.id = enfant.parent_id)
    ->  Index Scan using parent_pkey on parent  (cost=0.42..34317.43 rows=1000000 width=37) (actual time=0.004..121.127 rows=500000 loops=1)
@@ -135,14 +136,18 @@ order by parent.id;
 ```
 Aaahh! c'est déjà mieux avec un index !
 
+Maintenant, on change la requête en ajoutant une recherche like.
+Voyons voir ce ça donne.
+
+Changeons un peu la requête en ajoutant une recherche like
+
 ```sql
---changement de la requete en ajoutant une recherche like
 explain analyse select * from parent
 join enfant on parent.id = enfant.parent_id 
 where parent.parent like 'abcd%'
 order by parent.id;
-                                                         QUERY PLAN                                                          
------------------------------------------------------------------------------------------------------------------------------
+                              QUERY PLAN                            
+-----------------------------------------------------------------
  Sort  (cost=32385.16..32385.29 rows=50 width=82) (actual time=180.327..180.328 rows=3 loops=1)
    Sort Key: parent.id
    Sort Method: quicksort  Memory: 25kB
@@ -157,8 +162,11 @@ order by parent.id;
  Planning time: 0.136 ms
  Execution time: 180.349 ms
 (13 rows)
+```
+On remarque un scan séquenciel sur la colonne parent.
+Ajoutons un index sur cette colonne et testons.
 
-
+```sql
 --ajout d'un index sur la colonne parent.parent
 create index parent_norm_idx on parent(parent);
 
@@ -166,8 +174,8 @@ explain analyse select * from parent
 join enfant on parent.id = enfant.parent_id 
 where parent.parent like 'abcd%'
 order by parent.id;
-                                                         QUERY PLAN                                                         
-----------------------------------------------------------------------------------------------------------------------------
+                              QUERY PLAN                            
+-----------------------------------------------------------------
  Sort  (cost=32385.16..32385.29 rows=50 width=82) (actual time=166.312..166.313 rows=3 loops=1)
    Sort Key: parent.id
    Sort Method: quicksort  Memory: 25kB
@@ -182,19 +190,19 @@ order by parent.id;
  Planning time: 0.291 ms
  Execution time: 166.334 ms
 (13 rows)
-
-
+```
+On remarque que cela ne
 drop index parent_norm_idx;
 
---creation d'index text_patern
+--creation d'index text_pattern
 create index parent_textpatern_idx on parent(parent text_pattern_ops);
 
 explain analyse select * from parent
 join enfant on parent.id = enfant.parent_id 
 where parent.parent like 'abcd%'
 order by parent.id;
-                                                                    QUERY PLAN                                                                    
---------------------------------------------------------------------------------------------------------------------------------------------------
+                              QUERY PLAN                            
+-----------------------------------------------------------------
  Sort  (cost=11606.36..11606.49 rows=50 width=82) (actual time=90.681..90.681 rows=3 loops=1)
    Sort Key: parent.id
    Sort Method: quicksort  Memory: 25kB
@@ -217,8 +225,8 @@ explain analyse select * from parent
 join enfant on parent.id = enfant.parent_id 
 where parent.parent like '%abcd%'
 order by parent.id;
-                                                         QUERY PLAN                                                          
------------------------------------------------------------------------------------------------------------------------------
+                              QUERY PLAN                            
+-----------------------------------------------------------------
  Sort  (cost=32385.16..32385.29 rows=50 width=82) (actual time=288.069..288.094 rows=217 loops=1)
    Sort Key: parent.id
    Sort Method: quicksort  Memory: 55kB
@@ -244,8 +252,8 @@ explain analyse select * from parent
 join enfant on parent.id = enfant.parent_id 
 where parent.parent like '%abcd%'
 order by parent.id;
-                                                                  QUERY PLAN                                                                  
-----------------------------------------------------------------------------------------------------------------------------------------------
+                              QUERY PLAN                            
+-----------------------------------------------------------------
  Sort  (cost=11948.32..11948.45 rows=50 width=82) (actual time=92.068..92.087 rows=217 loops=1)
    Sort Key: parent.id
    Sort Method: quicksort  Memory: 55kB
@@ -265,7 +273,4 @@ order by parent.id;
 (16 rows)
 
 ```
-cost premier ligne .. toutes les lignes
-l'unité de cout "de page"
-rows : nombre de lignes
-width: largeru moyenne d'une ligne (en octets)
+
