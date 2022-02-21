@@ -191,9 +191,14 @@ order by parent.id;
  Execution time: 166.334 ms
 (13 rows)
 ```
-On remarque que cela ne
-drop index parent_norm_idx;
+On remarque que cela n'améliore pas le plan
 
+```sql
+drop index parent_norm_idx;
+```
+
+Testons un index text_pattern
+```sql
 --creation d'index text_pattern
 create index parent_textpatern_idx on parent(parent text_pattern_ops);
 
@@ -219,7 +224,10 @@ order by parent.id;
  Planning time: 0.263 ms
  Execution time: 90.709 ms
 (15 rows)
+```
 
+Modification de la requête
+```sql
 --modification de la requête
 explain analyse select * from parent
 join enfant on parent.id = enfant.parent_id 
@@ -241,7 +249,11 @@ order by parent.id;
  Planning time: 0.169 ms
  Execution time: 288.129 ms
 (13 rows)
+```
 
+Comment optimiser cette requête.
+
+```sql
 --install de la recherche par trigramme
 --install del'entension trigramme
 create extension pg_trgm;
@@ -273,4 +285,31 @@ order by parent.id;
 (16 rows)
 
 ```
+# En vrac
 
+Table pg_statistique ou pg_stats pour voir les statistiques d'une table
+
+Les statistiques:
+
+- pourcentages de valeur null
+- la largeur moyenne d'une ligne
+- nombre valeur distinctes
+etc
+- valeur les plus frequentes et leur frequence
+
+largeur de ligne: plus c'est petit mieux c'est. ;-)
+
+cout total:
+pour une lecture sequentiel
+
+- lecture de tous les blocs diques de la relation parent
+- vérifier chaque ligne de chaque bloc pour filtrer les lignes "invisible" , MVCC (multiversion Cocurency Control )
+
+explain analyse: Attention exécute réellement la requete
+
+- duree réelle d'éxécution
+- nombre réel de lignes
+- nombre de boucle
+
+explain analyse, buffer
+affiche la consommation de shared memory
