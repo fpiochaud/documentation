@@ -1,60 +1,130 @@
-# Paramètrage de l'environnement de développement.
+# Paramètrage de l'environnement de développement avec WSL2.
 
-## Installation yarn
+Pré-requis, il faut installer WSL sur le poste windows
+voir [Installation de WSL](wsl/wsl.md)
 
-Deux solutions: 
-- soit installer via un .msi https://classic.yarnpkg.com/lang/en/docs/install/#windows-stable\
-- Soit l'installer via chocolatey via une console powershell
+## 1) installation pour la partie Frontend
+
+Dans mon cas, Frontend en angular
+
+**Pré-requis si vous êtes en entreprise**
+
+Si vous utilisez votre propre certificat, ajouter le fichier ~/.curlrc
+
+```bash 
+# fichier ~/.curlrc
+-k 
+```
+
+Si votre entrerpise a un proxy, ajouter les variables HTTP_PROXY, HTTPS_PROXY et FTP_PROXY. Perso, je préfère ajouter un fichier de conf dans /etc/profile.d/proxy
+
+(ne pas oublier de paramétrer le gestionnaire de paquet apt, yum ou autre en fonction de la distribution linux)
+
+### a) Install node 
+
+Pour pouvoir gérer plusieurs versions de node, il est préférable d'installer nvm (node version manager)
 
 ```bash
-choco install yarn
+sudo apt install curl nodejs
+curl https://raw.githubusercontent.com/creationix/nvm/master/install.sh | bash
+source ~/.profile
 ```
 
-Il faut également créer une variable d'environnement YARN_HOME, dans la partie variable système:\
-`YARN_HOME=C:\Users\{username}\AppData\Local\Yarn\bin`\
-et ajouter cette variable à la variable PATH (et redémarrer le PC pour la prise en compte). C'est dans ce répertoire ou est installé les modules globaux.
+**Installation de Node avec nvm**
 
-## Switch de version de java
+Soit : \
+installer node 
 
-Aprés avoir installer, les différentes versions de java nécessaire.
-Dans mon cas, ce sont des installations de openJDK :
-- C:\Program Files\RedHat\java-1.8.0-openjdk-1.8.0.312-2
-- C:\Program Files\RedHat\java-17-openjdk-17.0.2.0.8-1
-
-Déclarer les variables systèmes suivantes:
-JAVA8_HOME=C:\Program Files\RedHat\java-1.8.0-openjdk-1.8.0.312-2
-JAVA17_HOME=C:\Program Files\RedHat\java-17-openjdk-17.0.2.0.8-1
-et
-Ajouter à la variable Path:
-%JAVA_HOME%\bin
-
-Déclarer une variable Utilisateur:
-JAVA_HOME=%JAVA8_HOME%
-ou
-JAVA_HOME=%JAVA17_HOME%
-
-Puis redémarrer le PC.
-
-On peux ensuite créer des scripts pour switcher rapidement de jvm
-
-exemple1: 
-
-``` bash
-# java8.bat
-@echo off
-set JAVA_HOME=%JAVA8_HOME%
-setx JAVA_HOME "%JAVA_HOME%" 
-set Path=%JAVA_HOME%\bin;%JAVA_HOME%\jre\bin;%Path%
-java -version
+```bash 
+nvm install node
 ```
 
-exemple2: 
+ou: 
+installer la dernier version LTS de node
 
-``` bash
-# java17.bat
-@echo off
-set JAVA_HOME=%JAVA17_HOME%
-setx JAVA_HOME "%JAVA_HOME%" 
-set Path=%JAVA_HOME%\bin;%JAVA_HOME%\jre\bin;%Path%
-java -version
+```bash 
+nvm install --lts
 ```
+
+ou: 
+Installer la version de node désirée
+```bash 
+nvm install v16.14.0
+# et la définir par défaut
+nvm alias default v16.14.0
+```
+
+Fichier de conf npm et yarn pour le cas ou on a un repo local
+
+```bash
+# fichier ~/.npmrc
+registry=https://artifactory.foo.bar/artifactory/api/npm/npm
+strict-ssl=false
+
+# fichier ~/.yarnrc
+registry "https://artifactory.foo.bar/artifactory/api/npm/npm"
+strict-ssl false
+```
+
+### b) Installation yarn
+Sous WSL
+
+`npm install -g yarn`
+
+### c) Installation du cli angular
+
+```bash
+yarn global add @angular/cli
+```
+
+### d) Installation de Yeoman
+
+```bash
+yarn global add yo
+```
+
+## 2) Installation pour la partie Backend
+
+Dans mon cas, backend en java (springboot)
+
+### a) Installation java (avec la possibilité de switcher de version)
+
+Je gère plusieurs projets avec des versions java différentes, je veux pouvoir passer d'un projet à l'autre sans soucis.
+
+```bash
+sudo apt install default-jdk openjdk-8-jdk openjdk-17-jdk
+```
+
+Pour lister les versions java installer:
+
+```bash
+$ sudo update-java-alternatives -l
+java-1.11.0-openjdk-amd64      1111       /usr/lib/jvm/java-1.11.0-openjdk-amd64
+java-1.17.0-openjdk-amd64      1711       /usr/lib/jvm/java-1.17.0-openjdk-amd64
+java-1.8.0-openjdk-amd64       1081       /usr/lib/jvm/java-1.8.0-openjdk-amd64
+```
+
+Pour basculer sur jvm
+
+```bash
+$ sudo update-java-alternatives -s java-1.11.0-openjdk-amd64
+# ou
+$ sudo update-java-alternatives -s java-1.17.0-openjdk-amd64
+# ou
+$ sudo update-java-alternatives -s java-1.8.0-openjdk-amd64
+```
+
+PS: dans ma configuration j'ai ce message d'erreur (mais génant dans mon cas):
+
+```bash
+$ sudo update-java-alternatives -s java-1.11.0-openjdk-amd64
+update-alternatives: error: no alternatives for mozilla-javaplugin.so
+
+$ sudo update-java-alternatives -s java-1.17.0-openjdk-amd64
+update-alternatives: error: no alternatives for mozilla-javaplugin.so
+
+$ sudo update-java-alternatives -s java-1.8.0-openjdk-amd64
+update-alternatives: error: no alternatives for mozilla-javaplugin.so
+update-java-alternatives: plugin alternative does not exist: /usr/lib/jvm/java-8-openjdk-amd64/jre/lib/amd64/IcedTeaPlugin.so
+```
+
