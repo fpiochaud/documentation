@@ -66,3 +66,14 @@ processors=4 # Makes the WSL 2 VM use two virtual processors
 [automount]
 options = "metadata"
 ```
+
+## Compacter un vhdx (dans mon cas celui de docker-desktop-data)
+D'abord faire le ménage sur la distrib.
+Ouvrir une console powershell en admin
+
+puis arréter wsl 
+
+```bash
+wsl --shutdown
+Optimize-VHD -Path <chemin du fichier>\ext4.vhdx -Mode Full
+```

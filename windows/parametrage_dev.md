@@ -128,3 +128,11 @@ update-alternatives: error: no alternatives for mozilla-javaplugin.so
 update-java-alternatives: plugin alternative does not exist: /usr/lib/jvm/java-8-openjdk-amd64/jre/lib/amd64/IcedTeaPlugin.so
 ```
 
+Pour ajouter des certificats au cacerts des jvm:
+le cacert est partagée à toutes les JVM. 
+Chemin du fichier: /etc/ssl/certs/java/cacerts
+
+```bash
+# pour importer un certificat
+$ keytool -import -trustcacerts -alias my_root_cert -file my_cert_file.crt -keystore /etc/ssl/certs/java/cacerts -storepass changeit
+```
