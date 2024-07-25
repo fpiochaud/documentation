@@ -77,3 +77,13 @@ puis arréter wsl
 wsl --shutdown
 Optimize-VHD -Path <chemin du fichier>\ext4.vhdx -Mode Full
 ```
+
+## redémarrer wsl sans reboot le PC (lorsqu'il est planté)
+Ouvrir une invite de commande windows en mode administrateur
+
+```bash
+taskkill /F /im wslservice.exe # kill le service wsl
+
+wsl # relance wsl
+```
+
