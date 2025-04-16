@@ -82,7 +82,11 @@ Optimize-VHD -Path <chemin du fichier>\ext4.vhdx -Mode Full
 Ouvrir une invite de commande windows en mode administrateur
 
 ```bash
-taskkill /F /im wslservice.exe # kill le service wsl
+# kill le service wsl version CMD
+taskkill /F /im wslservice.exe
+
+# kill le service wsl version PowerShell
+Stop-Process -Name wslservice -Force 
 
 wsl # relance wsl
 ```
